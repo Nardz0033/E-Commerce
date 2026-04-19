@@ -1,0 +1,9 @@
+{
+  "require": {
+    "php": "^7.3 || ^8.0",
+    "some/package": "^1.0"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^9.0"
+  }
+}
