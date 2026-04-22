@@ -1,68 +1,73 @@
 <?php
-include "../includes/config.inc.php";
+require_once "../includes/config.inc.php";
 
-/* IF ALREADY LOGGED IN */
-if(isset($_SESSION['user_id'])) {
-    header("Location: dashboard.php");
+if (isset($_SESSION['user_id'])) {
+    header("Location: /users/dashboard.php");
     exit();
 }
 
-/* LOGIN PROCESS (MUST BE BEFORE ANY HTML OUTPUT) */
-if(isset($_POST['login'])) {
+$error = '';
 
-    $email = mysqli_real_escape_string($conn, $_POST['email']);
-    $password = $_POST['password'];
+if (isset($_POST['login'])) {
+    $email    = trim($_POST['email'] ?? '');
+    $password = $_POST['password'] ?? '';
 
-    $sql = "SELECT * FROM users WHERE email='$email' LIMIT 1";
-    $result = mysqli_query($conn, $sql);
-
-    if($result && mysqli_num_rows($result) > 0) {
-
-        $row = mysqli_fetch_assoc($result);
-
-        if(password_verify($password, $row['pass'])) {
-
-            // SET SESSION
-            $_SESSION['user_id'] = $row['user_id'];
-            $_SESSION['name'] = $row['first_name'];
-            $_SESSION['email'] = $row['email'];
-            $_SESSION['user_level'] = $row['user_level'];
-
-            // REDIRECT IMMEDIATELY
-            header("Location: dashboard.php");
-            exit();
-
-        } else {
-            $error = "❌ Wrong password!";
-        }
-
+    if ($email === '' || $password === '') {
+        $error = "Please fill in all fields.";
     } else {
-        $error = "❌ Email not found!";
+        $res = db_query($conn, "SELECT user_id, first_name, email, pass, user_level FROM users WHERE email=? LIMIT 1", 's', $email);
+        if ($res && $row = $res->fetch_assoc()) {
+            if (password_verify($password, $row['pass'])) {
+                session_regenerate_id(true);
+                $_SESSION['user_id']    = (int)$row['user_id'];
+                $_SESSION['name']       = $row['first_name'];
+                $_SESSION['email']      = $row['email'];
+                $_SESSION['user_level'] = (int)$row['user_level'];
+                header("Location: /users/dashboard.php");
+                exit();
+            } else {
+                $error = "Invalid email or password.";
+            }
+        } else {
+            $error = "Invalid email or password.";
+        }
     }
 }
 ?>
-
 <?php include "../includes/header.php"; ?>
 
-<h2>🔐 Login</h2>
+<main class="auth-page">
+    <div class="auth-card">
+        <h2>Sign In</h2>
+        <p class="auth-subtitle">Welcome back to NardzShop</p>
 
-<form method="POST">
-    <input type="email" name="email" placeholder="Email" required><br><br>
+        <?php if ($error): ?>
+            <div class="alert alert-error"><?php echo e($error); ?></div>
+        <?php endif; ?>
 
-    <input type="password" name="password" placeholder="Password" required><br><br>
+        <?php if (isset($_GET['registered'])): ?>
+            <div class="alert alert-success">Registration successful! You can now log in.</div>
+        <?php endif; ?>
 
-    <button type="submit" name="login">Login</button>
-</form>
+        <form method="POST" novalidate>
+            <div class="form-group">
+                <label for="email">Email address</label>
+                <input type="email" id="email" name="email" placeholder="you@example.com"
+                       value="<?php echo e(trim($_POST['email'] ?? '')); ?>" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" placeholder="Your password" required>
+            </div>
+            <button type="submit" name="login" class="btn-primary btn-full">Sign In</button>
+        </form>
 
-<?php
-// SHOW ERROR (IF ANY)
-if(isset($error)) {
-    echo "<p style='color:red;'>$error</p>";
-}
-?>
-
-<p>
-    <a href="forgot_password.php">Forgot Password?</a>
-</p>
+        <div class="auth-links">
+            <a href="/users/forgot_password.php">Forgot your password?</a>
+            &middot;
+            <a href="/users/register.php">Create an account</a>
+        </div>
+    </div>
+</main>
 
 <?php include "../includes/footer.php"; ?>
